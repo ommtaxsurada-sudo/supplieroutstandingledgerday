@@ -1,0 +1,347 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Supplier Outstanding Ledger</title>
+
+<style>
+
+body{
+    font-family:Arial;
+    max-width:1200px;
+    margin:20px auto;
+    padding:20px;
+}
+
+h2{
+    text-align:center;
+}
+
+input{
+    width:100%;
+    padding:10px;
+    margin:8px 0;
+    box-sizing:border-box;
+}
+
+button{
+    padding:10px 20px;
+    cursor:pointer;
+    margin:5px;
+}
+
+table{
+    width:100%;
+    border-collapse:collapse;
+    margin-top:20px;
+}
+
+table,th,td{
+    border:1px solid #ccc;
+}
+
+th{
+    background:#1976d2;
+    color:white;
+}
+
+th,td{
+    padding:10px;
+    text-align:center;
+}
+
+tr:nth-child(even){
+    background:#f5f5f5;
+}
+
+.summary{
+    display:flex;
+    gap:20px;
+    margin-top:20px;
+}
+
+.card{
+    flex:1;
+    background:#f8f8f8;
+    border-left:5px solid blue;
+    padding:15px;
+    text-align:center;
+}
+
+.card h3{
+    margin:0;
+}
+
+.card h2{
+    margin-top:10px;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<h2>Supplier Outstanding Ledger</h2>
+
+<input
+type="text"
+id="supplier"
+list="supplierList"
+placeholder="Supplier Name">
+
+<datalist id="supplierList"></datalist>
+
+<label>From Date</label>
+<input type="date" id="fromDate">
+
+<label>To Date</label>
+<input type="date" id="toDate">
+
+<button onclick="loadLedger()">Search</button>
+
+<div class="summary">
+
+<div class="card">
+<h3>Total Purchases</h3>
+<h2>₹ <span id="salesTotal">0</span></h2>
+</div>
+
+<div class="card">
+<h3>Total Payment paid</h3>
+<h2>₹ <span id="paymentTotal">0</span></h2>
+</div>
+
+<div class="card">
+<h3>Outstanding</h3>
+<h2>₹ <span id="outstanding">0</span></h2>
+</div>
+
+</div>
+
+<table>
+
+<thead>
+
+<tr>
+
+<th>Date</th>
+
+<th>Particular</th>
+
+<th>Description</th>
+
+<th>Debit</th>
+
+<th>Credit</th>
+
+<th>Balance</th>
+
+</tr>
+
+</thead>
+
+<tbody id="tbody">
+
+</tbody>
+
+</table>
+<script type="module">
+
+
+
+
+
+
+
+
+
+    
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
+
+import {
+    getFirestore,
+    collection,
+    getDocs
+} from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+
+const firebaseConfig = {
+
+  apiKey: "AIzaSyBOw2CG4-8JWYNl5hf3aR7yCPjcPI41IC0",
+  authDomain: "ommtaxsolutions.firebaseapp.com",
+  projectId: "ommtaxsolutions",
+  storageBucket: "ommtaxsolutions.firebasestorage.app",
+  messagingSenderId: "944702919466",
+  appId: "1:944702919466:web:6f37b36e1d5cf6d7a54453",
+  measurementId: "G-NNTHM5Y4B8"
+
+
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+let ledgerData = [];
+
+// Load supplier List
+async function loadsupplierList(){
+
+    const snapshot = await getDocs(collection(db,"suppliers"));
+
+    let options = "";
+
+    snapshot.forEach(doc=>{
+
+        let data = doc.data();
+
+        options += `<option value="${data.name}"></option>`;
+
+    });
+
+    document.getElementById("supplierList").innerHTML = options;
+
+}
+
+loadsupplierList();
+
+// Search Ledger
+window.loadLedger = async function(){
+
+    let supplier=document.getElementById("supplier").value;
+
+    let from = document.getElementById("fromDate").value;
+
+    let to = document.getElementById("toDate").value;
+
+    if(supplier==""){
+        alert("Select supplier");
+        return;
+    }
+
+    ledgerData=[];
+
+    // purchases
+    const purchaseSnap = await getDocs(collection(db,"purchases"));
+
+purchaseSnap.forEach(doc=>{
+
+    let d = doc.data();
+
+    if(d.name != supplier) return;
+
+    if(from && d.date < from) return;
+
+    if(to && d.date > to) return;
+
+    ledgerData.push({
+
+        date:d.date,
+        particular:"Purchase",
+        description:d.transType || "",
+        debit:Number(d.payment || 0),
+        credit:0
+
+    });
+
+});
+
+    // PAYMENTS
+   const paySnap = await getDocs(collection(db,"supplierPayments"));
+
+paySnap.forEach(doc=>{
+
+    let d = doc.data();
+
+    if(d.name != supplier) return;
+
+    if(from && d.date < from) return;
+
+    if(to && d.date > to) return;
+
+    ledgerData.push({
+
+        date:d.date,
+        particular:"Payment",
+        description:d.transType || "",
+        debit:0,
+        credit:Number(d.payment || 0)
+
+    });
+
+});
+
+    // Ascending Date
+    ledgerData.sort((a,b)=>new Date(a.date)-new Date(b.date));
+
+    displayLedger();
+
+};
+function displayLedger(){
+
+    let html = "";
+
+    let balance = 0;
+    let totalSales = 0;
+    let totalPayment = 0;
+
+    ledgerData.forEach(item=>{
+
+        if(item.debit>0){
+            totalSales += item.debit;
+        }
+
+        if(item.credit>0){
+            totalPayment += item.credit;
+        }
+
+        balance += item.debit;
+        balance -= item.credit;
+
+        html += `
+        <tr>
+
+            <td>${item.date}</td>
+
+            <td>${item.particular}</td>
+
+            <td>${item.description}</td>
+
+            <td>${item.debit>0 ? "₹ "+item.debit.toLocaleString("en-IN") : ""}</td>
+
+            <td>${item.credit>0 ? "₹ "+item.credit.toLocaleString("en-IN") : ""}</td>
+
+            <td><b>₹ ${balance.toLocaleString("en-IN")}</b></td>
+
+        </tr>
+        `;
+
+    });
+
+    if(ledgerData.length==0){
+
+        html = `
+        <tr>
+            <td colspan="6" style="text-align:center;color:red;">
+                No Records Found
+            </td>
+        </tr>
+        `;
+
+    }
+
+    document.getElementById("tbody").innerHTML = html;
+
+    document.getElementById("salesTotal").innerHTML =
+        totalSales.toLocaleString("en-IN");
+
+    document.getElementById("paymentTotal").innerHTML =
+        totalPayment.toLocaleString("en-IN");
+
+    document.getElementById("outstanding").innerHTML =
+        balance.toLocaleString("en-IN");
+
+}
+</script>
+</body>
+</html>
