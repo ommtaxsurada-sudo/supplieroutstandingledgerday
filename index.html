@@ -182,6 +182,26 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
+import {
+    getAuth,
+    onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
+
+const auth = getAuth(app);
+
+onAuthStateChanged(auth, (user) => {
+
+    if (!user) {
+        window.location.href = "https://ommtaxsurada-sudo.github.io/ommtaxlogin/";
+        return;
+    }
+
+    console.log("Authorized user:", user.uid);
+
+});
+
+
+
 let ledgerData = [];
 
 // Load supplier List
@@ -342,6 +362,57 @@ function displayLedger(){
         balance.toLocaleString("en-IN");
 
 }
+/* Disable right-click */
+document.addEventListener("contextmenu", function(event) {
+    event.preventDefault();
+});
+
+
+/* Disable F12 */
+document.addEventListener("keydown", function(event) {
+
+    if (event.key === "F12") {
+        event.preventDefault();
+    }
+
+    /* Disable Ctrl + Shift + I */
+    if (
+        event.ctrlKey &&
+        event.shiftKey &&
+        event.key.toLowerCase() === "i"
+    ) {
+        event.preventDefault();
+    }
+
+    /* Disable Ctrl + Shift + J */
+    if (
+        event.ctrlKey &&
+        event.shiftKey &&
+        event.key.toLowerCase() === "j"
+    ) {
+        event.preventDefault();
+    }
+
+    /* Disable Ctrl + U */
+    if (
+        event.ctrlKey &&
+        event.key.toLowerCase() === "u"
+    ) {
+        event.preventDefault();
+    }
+
+    /* Disable Ctrl + S */
+    if (
+        event.ctrlKey &&
+        event.key.toLowerCase() === "s"
+    ) {
+        event.preventDefault();
+    }
+
+});
+
+
+
 </script>
 </body>
 </html>
